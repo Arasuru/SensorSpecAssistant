@@ -52,4 +52,4 @@ db = Chroma.from_documents(
     persist_directory="./chroma_db/sensorspec-bme280",
 )
 
-print("Persisting vector database to disk...")
+print("successfully created the vector database")
