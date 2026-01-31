@@ -56,5 +56,4 @@ ragchain = (
 query = "What is the device slave address for I2C interface?"
 print(f"Querying: {query}")
 response = ragchain.invoke(query)
-print("\n--- Response ---")
-print(response.content)
+print(response)
