@@ -11,8 +11,8 @@ from langchain_chroma import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.runnables import RunnablePassthrough
 from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.output_parsers import StrOutputParser
 
 #creating the embedding function
 embedding_function = HuggingFaceEmbeddings(
@@ -35,8 +35,22 @@ llm = ChatGroq(
     temperature=0,
 )
 
-#Defining the prompt template
-prompt_template = """You are a helpful assistant and embedded sensors expert. Keep the chat history in mind while answering the question.
+#Defining the prompt templates for two stage RAG
+#Prompt 1: to make the question more specific using chat history
+rewrite_system_prompt = """Given a chat history and the latest user question 
+                            which might reference context in the chat history, formulate a standalone question 
+                            which can be understood without the chat history. 
+                            Do NOT answer the question, just reformulate it if needed and otherwise return it as is."""
+rewrite_prompt = ChatPromptTemplate.from_messages([
+    ("system", rewrite_system_prompt),
+    ("human", "Chat History:\n{chat_history}\n\nLatest Question: {question}")
+])
+
+#mini-chain for question rewriting
+rewrite_chain = rewrite_prompt | llm | StrOutputParser()
+
+#Prompt 2: to answer the question using retrieved context
+prompt_template = """You are a helpful assistant and embedded sensors expert. Be Concise and precise in your answers. Keep the chat history in mind while answering the question.
         Here is the Conversation history so far:
          {chat_history} 
         Use the following context from the document. Context:
@@ -61,18 +75,30 @@ while True:
     if len(chat_history) > MAX_HISTORY_LENGTH:
         chat_history = chat_history[-MAX_HISTORY_LENGTH:]
 
-    #retrieve relevant chunks from db
-    docs = retriever.invoke(user_input)
-
-    #prepare inputs
+    #formatting chat history
     history_str = llm_utils.format_history(chat_history)
+
+    #Stage 1: question rewriting
+    if history_str:
+        search_query = rewrite_chain.invoke({
+            "chat_history": history_str,
+            "question": user_input
+        })
+        print(f"Rewritten Question: {search_query}\n")
+    else:
+        search_query = user_input
+
+    #retrieve relevant chunks from db
+    docs = retriever.invoke(search_query)
+
+    #prepare input
     context_str = llm_utils.format_docs(docs)
 
     chain = prompt | llm
     response = chain.invoke({
         "chat_history": history_str,
         "context": context_str,
-        "question": user_input
+        "question": user_input #no need to rewritten question here as LLm already knows chat history
     })
     print(f"AI: {response.content}")
 
