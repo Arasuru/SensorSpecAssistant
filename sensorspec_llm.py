@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-
+import llm_utils
 #load variables from .env file
 load_dotenv()
 if not os.environ.get("GROQ_API_KEY"):
@@ -12,6 +12,7 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
+from langchain_core.messages import HumanMessage, AIMessage
 
 #creating the embedding function
 embedding_function = HuggingFaceEmbeddings(
@@ -35,25 +36,46 @@ llm = ChatGroq(
 )
 
 #Defining the prompt template
-prompt_template = """You are a helpful assistant and embedded sensors expert. Use the following context to answer the question. if the answer is not in context , then say I don't know.
-                Context:
-                {context}
-                Question: {question}"""
+prompt_template = """You are a helpful assistant and embedded sensors expert. Keep the chat history in mind while answering the question.
+        Here is the Conversation history so far:
+         {chat_history} 
+        Use the following context from the document. Context:
+        {context}
+        answer the following question. if the answer is not in context , then say I don't know.
+        Question: {question}"""
 
 prompt = ChatPromptTemplate.from_template(prompt_template)
 
-#Formatting each chunk as a paragraph and joining to one context string
-def format_docs(docs):
-    return "\n\n".join([d.page_content for d in docs])
+#The chat loop with retrieval augmented generation
+chat_history = []
+MAX_HISTORY_LENGTH = 6 #keep last 6 messages in history(3 human, 3 AI)
 
-ragchain = (
-    {"context": retriever | format_docs, "question": RunnablePassthrough()}
-    | prompt
-    | llm
-)
+print("Starting RAG chat with Groq LLM model...")
+while True:
+    user_input = input("\nUser: ")
+    if user_input.lower() in ['exit', 'quit']:
+        print("Exiting chat.")
+        break
+    
+    #checking the length of chat history
+    if len(chat_history) > MAX_HISTORY_LENGTH:
+        chat_history = chat_history[-MAX_HISTORY_LENGTH:]
 
-#running the rag chain
-query = "What is the device slave address for I2C interface?"
-print(f"Querying: {query}")
-response = ragchain.invoke(query)
-print(response)
+    #retrieve relevant chunks from db
+    docs = retriever.invoke(user_input)
+
+    #prepare inputs
+    history_str = llm_utils.format_history(chat_history)
+    context_str = llm_utils.format_docs(docs)
+
+    chain = prompt | llm
+    response = chain.invoke({
+        "chat_history": history_str,
+        "context": context_str,
+        "question": user_input
+    })
+    print(f"AI: {response.content}")
+
+    #update chat history
+    chat_history.append(HumanMessage(content=user_input))
+    chat_history.append(AIMessage(content=response.content))

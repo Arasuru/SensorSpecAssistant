@@ -29,7 +29,7 @@ text_splitter = RecursiveCharacterTextSplitter(
 )
 
 final_chunks = text_splitter.split_documents(md_header_splits)
-utils.preview_chunks(final_chunks)
+#utils.preview_chunks(final_chunks)
 
 print(f"Total Chunks Created: {len(final_chunks)}")
 
@@ -47,7 +47,6 @@ db = Chroma.from_documents(
     documents=final_chunks,
     embedding=embeddings,
     persist_directory="./chroma_db/sensorspec-bme280",
-    collection_name="sensorspec-bme280"
 )
 
 print("successfully created the vector database")

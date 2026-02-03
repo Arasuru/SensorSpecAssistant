@@ -68,6 +68,7 @@ def load_similarity_db(query: str):
     print(f"Length of query embedding vector: {len(v1)}")
     # Retrieve top 3 most relevant chunks
     results = db.similarity_search(query, k=3)
+    print(f"Top {len(results)} results:")
     for i, doc in enumerate(results):
         print(f"\n--- Result {i+1} ---")
         print(f"Content: {doc.page_content}")
