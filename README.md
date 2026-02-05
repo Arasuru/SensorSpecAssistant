@@ -31,14 +31,14 @@ The application leverages **LangChain**, **ChromaDB** for vector storage, **Hugg
 
 1.  **Clone the repository:**
     ```bash
-    git clone <your-repo-url>
+    git clone https://github.com/Arasuru/SensorSpecAssistant.git
     cd SensorSpecAssistant
     ```
 
 2.  **Install dependencies:**
     You can install the required packages using pip.
     ```bash
-    pip install langchain langchain-chroma langchain-huggingface langchain-groq pymupdf pymupdf4llm python-dotenv pydantic
+    pip install -U langchain langchain-chroma langchain-huggingface langchain-groq pymupdf pymupdf4llm python-dotenv
     ```
 
 3.  **Set up Environment Variables:**
