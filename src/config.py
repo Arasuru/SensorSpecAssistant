@@ -22,3 +22,4 @@ CHUNK_OVERLAP = 50
 
 #Ensure directories exist
 INPUT_DIR.mkdir(parents=True, exist_ok=True)
+VECTORS_DIR.mkdir(parents=True, exist_ok=True)

@@ -14,13 +14,11 @@ The application leverages **LangChain**, **ChromaDB** for vector storage, **Hugg
 
 ## 📂 Project Structure
 
-* **`sensorspec_vectors_creation.py`**: The ingestion script. It loads the PDF, splits it into markdown chunks, creates embeddings, and saves them to the vector database.
-* **`sensorspec_llm.py`**: The main chat application. It loads the database, initializes the LLM, and handles the RAG chat loop.
-* **`utils.py`**: Helper functions for PDF processing (single doc vs. page-by-page) and loading the similarity database.
-* **`llm_utils.py`**: Helper functions for formatting documents and chat history strings.
-* **`test_setup.py`**: A utility script to verify library versions.
-* **`bst-bme280-ds002.pdf`**: The source datasheet file (ensure this file exists in the root directory).
-* **`chroma_db/`**: The directory where the vector database is persisted.
+* **`src/config.py`**: The main config file to setup path variables to run smoothly on any system.
+* **`src/ingest.py`**: The ingestion script. It loads the PDF, splits it into markdown chunks, creates embeddings, and saves them to the vector database.
+* **`src/chat.py`**: The main chat application. It loads the database, initializes the LLM, and handles the RAG chat loop.
+* **`src/utils.py`**: Helper functions for PDF processing, formatting documents and chat history strings.
+
 
 ## 🛠️ Prerequisites
 
@@ -38,7 +36,7 @@ The application leverages **LangChain**, **ChromaDB** for vector storage, **Hugg
 2.  **Install dependencies:**
     You can install the required packages using pip.
     ```bash
-    pip install -U langchain langchain-chroma langchain-huggingface langchain-groq pymupdf pymupdf4llm python-dotenv
+    pip install -r requirements.txt
     ```
 
 3.  **Set up Environment Variables:**
@@ -50,42 +48,44 @@ The application leverages **LangChain**, **ChromaDB** for vector storage, **Hugg
 ## 🏃 Usage
 
 ### 1. Create the Vector Database
-Before chatting, you must process the PDF and create the embeddings. Ensure the file `bst-bme280-ds002.pdf` is in the project root.
+Before chatting, you must process the PDF and create the embeddings. Ensure the file `bst-bme280-ds002.pdf` is in the INPUT_DIR.
 
 Run the creation script:
 ```bash
-python sensorspec_vectors_creation.py
+python -m src.ingest
 ```
 
 ### 2. Start the Chat Assistant
 Once the database is ready, start the chat interface:
 
 ```Bash
-python sensorspec_llm.py
+python -m src.chat
 ```
 Type your question when prompted with User:.
 Type `exit` or `quit` to end the session.
 
-### ⚙️ Configuration
-* ###Adjusting Chunking
-In `sensorspec_vectors_creation.py`, you can modify how the text is split:
+## ⚙️ Configuration
+
+### Adjusting Chunking
+In `src/config.py`, you can modify how the text is split:
 
 ```Python
-chunk_size = 500
-chunk_overlap = 50
+CHUNK_SIZE = 500
+CHUNK_OVERLAP = 50
 ```
 
-* Changing the LLM
-In `sensorspec_llm.py`, you can swap the model (e.g., to a larger Llama model or Mixtral) by changing the model name in the ChatGroq initialization:
+### Changing the Model Settings
+* In `src/config.py`
+* you can swap the model (e.g., to a larger Llama model or Mixtral) by changing the `LLM_MODEL_NAME`.
+* you can swap the embedding function by changing the `EMBEDDING_MODEL_NAME`.
 
 ```Python
-llm = ChatGroq(
-    model="llama-3.1-8b-instant",
-    temperature=0,
-)
+EMBEDDING_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
+EMBEDDING_MODEL_KWARGS = {'device': 'cpu'}
+LLM_MODEL_NAME = "llama-3.1-8b-instant"
 ```
 
 ## 📝 Notes
-* The embedding model is configured to run on cpu by default in `sensorspec_vectors_creation.py` and `utils.py`. If you have a CUDA-enabled GPU, you can change device to cuda.
+* The embedding model is configured to run on cpu by default in `src/config.py` (`EMBEDDING_MODEL_KWARGS`). If you have a CUDA-enabled GPU, you can change device to cuda.
 
 * The system keeps a memory of the last 6 messages (3 interactions) to maintain context without exceeding token limits.
