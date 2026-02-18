@@ -66,7 +66,7 @@ python sensorspec_llm.py
 Type your question when prompted with User:.
 Type `exit` or `quit` to end the session.
 
-###⚙️ Configuration
+### ⚙️ Configuration
 * ###Adjusting Chunking
 In `sensorspec_vectors_creation.py`, you can modify how the text is split:
 
@@ -85,7 +85,7 @@ llm = ChatGroq(
 )
 ```
 
-##📝 Notes
+## 📝 Notes
 * The embedding model is configured to run on cpu by default in `sensorspec_vectors_creation.py` and `utils.py`. If you have a CUDA-enabled GPU, you can change device to cuda.
 
 * The system keeps a memory of the last 6 messages (3 interactions) to maintain context without exceeding token limits.
