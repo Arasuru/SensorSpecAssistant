@@ -1,11 +1,11 @@
-#environment variable files
+# Environment variables
 .env
-.env*
-
-#virtual environments
 sensorenv/
 
-#artifacts
+# Python
 __pycache__/
 *.pyc
 
+# Data
+data/vector_store/
+data/inputs/
