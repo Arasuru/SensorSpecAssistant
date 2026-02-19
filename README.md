@@ -14,6 +14,7 @@ The application leverages **LangChain**, **ChromaDB** for vector storage, **Hugg
 
 ## 📂 Project Structure
 
+* **`src/app.py`**: The main file with WebUI element to chat with the assistant
 * **`src/config.py`**: The main config file to setup path variables to run smoothly on any system.
 * **`src/ingest.py`**: The ingestion script. It loads the PDF, splits it into markdown chunks, creates embeddings, and saves them to the vector database.
 * **`src/chat.py`**: The main chat application. It loads the database, initializes the LLM, and handles the RAG chat loop.
@@ -63,6 +64,13 @@ python -m src.chat
 ```
 Type your question when prompted with User:.
 Type `exit` or `quit` to end the session.
+
+### 2. Start the Chat Assistant with Web UI
+Once the database is ready, start the chat interface with UI Element using streamlit:
+
+```Bash
+streamlit run src/app.py
+```
 
 ## ⚙️ Configuration
 
