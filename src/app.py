@@ -1,5 +1,6 @@
 import os
 import sys
+import tempfile
 from pathlib import Path
 import streamlit as st
 from dotenv import load_dotenv
@@ -14,7 +15,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain_core.output_parsers import StrOutputParser
 
-from src import utils, config 
+from src import utils, config, ingest
 
 load_dotenv()
 
@@ -22,25 +23,28 @@ st.set_page_config(page_title="SensorSpec Assistant", page_icon="📟", layout="
 
 # Resource Initialization (cache for performance)
 @st.cache_resource(show_spinner="Loading Vector Databse...")
-def load_rag_component():
-    if not os.environ.get("GROQ_API_KEY"):
-        raise ValueError("GROQ_API_KEY not found in environment variables")
-
+def load_default_retriever():
     #Initializing Embedding and vector DB
     embedding_function = utils.get_embedding_function()
 
     if not config.VECTORS_DIR.exists():
-        print(f"Error: Vector database not found at {config.VECTORS_DIR}. Please run the ingest script first.")
-        return
+        print(f"Error: Vector database not found at {config.VECTORS_DIR}. Please upload a document first.")
+        return None
 
     #loading the existing vector database
     db = Chroma(
         persist_directory=str(config.VECTORS_DIR), 
         embedding_function=embedding_function
     )
-    retriever = db.as_retriever(search_kwargs={"k":3})
+    return db.as_retriever(search_kwargs={"k":3})
 
+@st.cache_resource(show_spinner="Loading LLM Chains...")
+def load_llm_chains():
     #initialize groq chat model
+    if not os.environ.get("GROQ_API_KEY"):
+        st.error("GROQ_API_KEY not found in environment variables")
+        st.stop()
+
     #chatgroq automatically looks for GROQ_API_KEY in environment variables
     llm = ChatGroq(
         model="llama-3.1-8b-instant",
@@ -74,31 +78,79 @@ def load_rag_component():
     prompt = ChatPromptTemplate.from_template(prompt_template)
     rag_chain = prompt | llm
 
-    return retriever, rewrite_chain, rag_chain
+    return rewrite_chain, rag_chain
 
-
-#load components
-retriever, rewrite_chain, rag_chain = load_rag_component()
+@st.cache_resource(show_spinner=False)
+def process_uploaded_file(file_bytes):
+    #process pdf and caches the vector store, file_bytes act as cache key, so that if the same file is uploaded again, it will use the cached retriever instead of reprocessing
+    
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
+        tmp_file.write(file_bytes)
+        temp_file_path = tmp_file.name
+    try:
+        retriever = ingest.process_pdf(temp_file_path)
+        return retriever
+    finally:
+        os.remove(temp_file_path)
 
 #Session State Management
 if "messages" not in st.session_state:
     st.session_state.messages = []
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
+if "retriever" not in st.session_state:
+    st.session_state.retriever = load_default_retriever()
+if "current_file" not in st.session_state:
+    st.session_state.current_file = "Default (BME280 Datasheet)"
 
-
+rewrite_chain, rag_chain = load_llm_chains()
 MAX_HISTORY_LENGTH = 6
+
+
+with st.sidebar:
+    st.header("📄 Custom Datasheet")
+    st.markdown("Upload your own datasheet to chat with it. If cleared, it defaults back to the BME280 sensor.")
+    
+    uploaded_file = st.file_uploader("Upload a PDF datasheet", type=["pdf"])
+    
+    if uploaded_file:
+        # Check if it's a new file to avoid resetting chat history 
+        if st.session_state.current_file != uploaded_file.name:
+            with st.spinner(f"Processing and Embedding {uploaded_file.name}..."):
+                
+                # Pass the raw bytes to our new cached function
+                st.session_state.retriever = process_uploaded_file(uploaded_file.getvalue())
+                st.session_state.current_file = uploaded_file.name
+                
+                # Reset chat history for the new document
+                st.session_state.messages = []
+                st.session_state.chat_history = []
+                st.success("Document ready!")
+    else:
+        # This prevents Streamlit glitches from wiping chat history!
+        if st.session_state.current_file != "Default (BME280)":
+            st.warning("To return to the default BME280 datasheet, click below:")
+    
+    if st.button("Revert to Default"):
+                st.session_state.retriever = load_default_retriever()
+                st.session_state.current_file = "Default (BME280)"
+                st.session_state.messages = []
+                st.session_state.chat_history = []
 
 # UI layout
 st.title(" SensorSpec Assistant")
-st.markdown(f'** chat with the {config.PDF_FILENAME} datasheet!**')
+st.markdown(f'** chat with the {st.session_state.current_file} datasheet!**')
+
+if st.session_state.retriever is None:
+    st.warning("No retriever available. Please upload a document to chat with.")
+    st.stop()
 
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
 # --- Chat Interaction ---
-if user_input := st.chat_input("Ask a question about the BME280 sensor..."):
+if user_input := st.chat_input("Ask a question about the sensor..."):
     # 1. Display User Message
     st.chat_message("user").markdown(user_input)
     st.session_state.messages.append({"role": "user", "content": user_input})
@@ -122,7 +174,7 @@ if user_input := st.chat_input("Ask a question about the BME280 sensor..."):
                 search_query = user_input
 
             # Stage 2: Retrieve
-            docs = retriever.invoke(search_query)
+            docs = st.session_state.retriever.invoke(search_query)
             context_str = utils.format_docs(docs)
 
             # Stage 3: Answer
