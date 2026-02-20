@@ -27,10 +27,10 @@ def load_default_retriever():
     """Loads the pre-processed database, or builds it if it doesn't exist."""
     
     # 1. If the database exists, load it normally
-    if config.VECTORS_DIR.exists():
+    if config.VECTOR_STORE_DIR.exists():
         embedding_function = utils.get_embedding_function()
         db = Chroma(
-            persist_directory=str(config.VECTORS_DIR), 
+            persist_directory=str(config.VECTOR_STORE_DIR), 
             embedding_function=embedding_function
         )
         return db.as_retriever(search_kwargs={"k": 3})
