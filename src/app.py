@@ -25,18 +25,22 @@ st.set_page_config(page_title="SensorSpec Assistant", page_icon="📟", layout="
 @st.cache_resource(show_spinner="Loading Vector Databse...")
 def load_default_retriever():
     #Initializing Embedding and vector DB
-    embedding_function = utils.get_embedding_function()
+    if config.VECTORS_DIR.exists():
+        with st.spinner("Loading existing vector database..."):
+            embedding_function = utils.get_embedding_function()
 
-    if not config.VECTORS_DIR.exists():
-        print(f"Error: Vector database not found at {config.VECTORS_DIR}. Please upload a document first.")
-        return None
-
-    #loading the existing vector database
-    db = Chroma(
-        persist_directory=str(config.VECTORS_DIR), 
-        embedding_function=embedding_function
-    )
-    return db.as_retriever(search_kwargs={"k":3})
+            #loading the existing vector database
+            db = Chroma(
+                persist_directory=str(config.VECTORS_DIR), 
+                embedding_function=embedding_function
+            )
+            return db.as_retriever(search_kwargs={"k":3})
+    elif config.PDF_PATH.exists():
+        with st.spinner("No existing vector database found. Processing default PDF and creating vector store..."):
+            return ingest.process_pdf()
+    else:
+        st.error("No vector database or default PDF found. Please upload a PDF to get started.")
+        st.stop()
 
 @st.cache_resource(show_spinner="Loading LLM Chains...")
 def load_llm_chains():
