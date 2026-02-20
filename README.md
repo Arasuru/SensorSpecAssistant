@@ -1,25 +1,37 @@
-# SensorSpecAssistant
+# SensorSpec Assistant v1.0 📟
 
-**SensorSpecAssistant** is a Retrieval-Augmented Generation (RAG) application designed to act as an expert assistant for sensor specifications. Specifically tuned for the **BME280** sensor, it allows users to chat with the datasheet using natural language.
+**SensorSpec Assistant** is a Retrieval-Augmented Generation (RAG) application designed to act as an expert assistant for technical datasheets. 
 
-The application leverages **LangChain**, **ChromaDB** for vector storage, **HuggingFace** for embeddings, and **Groq** (using Llama 3.1) for high-speed inference.
+It comes pre-loaded with knowledge about the **BME280** sensor but also allows users to **upload their own PDF datasheets** to chat with them instantly.
 
 ## 🚀 Features
 
-* **PDF to Markdown Conversion**: Uses `pymupdf4llm` to preserve structure and headers from the datasheet.
-* **Vector Embeddings**: Uses `sentence-transformers/all-MiniLM-L6-v2` (runs efficiently on CPU) to create semantic embeddings.
-* **Persistent Vector Store**: Stores embeddings in a local ChromaDB instance to avoid reprocessing the PDF every time.
-* **Context-Aware Chat**: Implements a history-aware retriever that rewrites user queries based on previous conversation context.
-* **Fast Inference**: Powered by the Groq API running `llama-3.1-8b-instant`.
+* **Interactive Web UI**: Built with **Streamlit** for a clean, chat-like experience.
+* **Multi-Document Support**: 
+    * **Default Mode**: Chat with the pre-indexed BME280 datasheet.
+    * **Custom Mode**: Upload any PDF datasheet; the app indexes it in-memory for that session.
+* **Smart Context**: Maintains chat history and rewrites queries to ensure the LLM understands follow-up questions.
+* **Transparent RAG**: "View Retrieved Context" expander lets you see exactly what data the AI is using to answer.
+* **High-Performance**: Powered by **Groq** (Llama 3.1) for near-instant inference and **HuggingFace** for efficient CPU-based embeddings.
 
 ## 📂 Project Structure
 
-* **`src/app.py`**: The main file with WebUI element to chat with the assistant
-* **`src/config.py`**: The main config file to setup path variables to run smoothly on any system.
-* **`src/ingest.py`**: The ingestion script. It loads the PDF, splits it into markdown chunks, creates embeddings, and saves them to the vector database.
-* **`src/chat.py`**: The main chat application. It loads the database, initializes the LLM, and handles the RAG chat loop.
-* **`src/utils.py`**: Helper functions for PDF processing, formatting documents and chat history strings.
-
+```text
+SensorSpecAssistant/
+├── .env                    # API Keys (GROQ_API_KEY)
+├── .gitignore              # Git ignore rules
+├── requirements.txt        # Python dependencies
+├── README.md               # Project documentation
+├── data/                   
+│   ├── inputs/             # Store default PDFs here (e.g., bst-bme280-ds002.pdf)
+│   └── vector_store/       # Persistent Vector Database (ChromaDB)
+└── src/                    # Source Code
+    ├── app.py              # Main Streamlit Application
+    ├── chat.py             # CLI Chat Interface (optional)
+    ├── config.py           # Configuration settings (Paths, Models)
+    ├── ingest.py           # Script to process default PDFs
+    └── utils.py            # Helper functions (PDF processing, Formatting)
+```
 
 ## 🛠️ Prerequisites
 
@@ -48,6 +60,7 @@ The application leverages **LangChain**, **ChromaDB** for vector storage, **Hugg
 
 ## 🏃 Usage
 
+## Local Usage
 ### 1. Create the Vector Database
 Before chatting, you must process the PDF and create the embeddings. Ensure the file `bst-bme280-ds002.pdf` is in the INPUT_DIR.
 
@@ -65,12 +78,16 @@ python -m src.chat
 Type your question when prompted with User:.
 Type `exit` or `quit` to end the session.
 
-### 2. Start the Chat Assistant with Web UI
-Once the database is ready, start the chat interface with UI Element using streamlit:
+## Streamlit app
+### 1. Start the Chat Assistant with Web UI
+start the chat interface with UI Element using streamlit:
 
 ```Bash
 streamlit run src/app.py
 ```
+
+### 2. Accessing the app on cloud 
+    `<https://sensorspec-assistant.streamlit.app/>`
 
 ## ⚙️ Configuration
 
