@@ -22,25 +22,30 @@ load_dotenv()
 st.set_page_config(page_title="SensorSpec Assistant", page_icon="📟", layout="centered")
 
 # Resource Initialization (cache for performance)
-@st.cache_resource(show_spinner="Loading Vector Databse...")
+@st.cache_resource(show_spinner="Loading Vector Database...")
 def load_default_retriever():
-    #Initializing Embedding and vector DB
-    if config.VECTORS_DIR.exists():
-        with st.spinner("Loading existing vector database..."):
-            embedding_function = utils.get_embedding_function()
-
-            #loading the existing vector database
-            db = Chroma(
-                persist_directory=str(config.VECTORS_DIR), 
-                embedding_function=embedding_function
-            )
-            return db.as_retriever(search_kwargs={"k":3})
+    """Loads the pre-processed database, or builds it if it doesn't exist."""
+    
+    # 1. If the database exists, load it normally
+    if config.VECTOR_STORE_DIR.exists():
+        embedding_function = utils.get_embedding_function()
+        db = Chroma(
+            persist_directory=str(config.VECTOR_STORE_DIR), 
+            embedding_function=embedding_function
+        )
+        return db.as_retriever(search_kwargs={"k": 3})
+        
+    # 2. If the database DOES NOT exist, check if we have the PDF and build it!
     elif config.PDF_PATH.exists():
-        with st.spinner("No existing vector database found. Processing default PDF and creating vector store..."):
-            return ingest.process_pdf()
+        print("Building default database on first run...")
+        # ingest.process_pdf creates the Chroma db in-memory or on-disk
+        db = ingest.process_pdf(config.PDF_PATH)
+        return db.as_retriever(search_kwargs={"k": 3})
+        
+    # 3. If neither the DB nor the PDF exists, gracefully fall back
     else:
-        st.error("No vector database or default PDF found. Please upload a PDF to get started.")
-        st.stop()
+        st.warning("Default vector database and PDF not found. Please upload a document to begin.")
+        return None
 
 @st.cache_resource(show_spinner="Loading LLM Chains...")
 def load_llm_chains():
